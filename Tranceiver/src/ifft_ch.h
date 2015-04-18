@@ -75,7 +75,7 @@ public:
 
 double** IFFT_CH::getifftw_channel(int N, double **fftdata, int len) {
 	/* double [2] */
-	cq1 = fftw_plan_dft_1d(12, c_out1, c_in1, FFTW_BACKWARD, FFTW_ESTIMATE);
+	//cq1 = fftw_plan_dft_1d(12, c_out1, c_in1, FFTW_BACKWARD, FFTW_ESTIMATE);
 
 	int count_ifftdata = 0;
 	for (int j = 0; j < 2; ++j) {

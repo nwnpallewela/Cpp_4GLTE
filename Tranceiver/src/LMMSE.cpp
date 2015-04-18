@@ -1,9 +1,9 @@
 //============================================================================
-// Name        : 4GLTECpp.cpp
+// Name        : Zero_Forcing.cpp
 // Author      : Nuwan Pallewela
-// Version     : transmitter fftw3 //
+// Version     :
 // Copyright   : Feel free
-// Description : Hello World in C++, Ansi-style
+// Description :
 //============================================================================
 
 #include <iostream>
@@ -28,6 +28,8 @@
 #include"demodulator.h"
 #include"equalizer.h"
 #include"decoder.h"
+#include"ifft_zeroforcing.h"
+#include"ML_zeroforcing.h"
 
 typedef std::complex<double> Complex;
 typedef std::valarray<Complex> CArray;
@@ -40,27 +42,29 @@ string interleave(string data_in, int K);
 string multiplex(string code1, string code2);
 string encode(string DATA, int K);
 int error_calc(string rawdata_in, int* decoded_data, int count);
-int error_calc_str(string rawdata_in, string decoded_data, int count);
 
 //////////////////////////////////////////////////////////////////////////////////////
 int main() {
 
-	for (int var = 0; var < 1; ++var) {
+	for (int var = 0; var < 5; ++var) {
 
 		srand((unsigned) time(0));
 		cout << endl << endl
-				<< "*************************************************" << endl
-				<< "*************************************************" << endl
-				<< "This is a test of LTEA C++ Transmitter implementation LSD"
-				<< endl << "*************************************************"
-				<< endl << "*************************************************"
+				<< "***********************************************************************"
+				<< endl
+				<< "***********************************************************************"
+				<< endl
+				<< "   This is a test of LTEA C++ Transceiver implementation LMMSE "
+				<< endl
+				<< "***********************************************************************"
+				<< endl
+				<< "***********************************************************************"
 				<< endl << endl;
 
 		int datafilesize = 1;
 		int data_block_size = 40;
 		int decoder_num = 2;
 		int error = 0;
-
 		////////////////////////////////////////////////////////////////////////////////// Enter data fle size in console
 		/*	while (datafilesize % 40 != 0) {
 		 cout << endl << "Enter data file size ( X 320 ): ";
@@ -112,6 +116,16 @@ int main() {
 				Rx[i][j] = 0;
 			}
 		}
+
+		double **y_out = new double*[2];
+		for (int i = 0; i < 2; i++) {
+			y_out[i] = new double[16];
+
+			for (int j = 0; j < 16; j++) {
+				y_out[i][j] = 0;
+			}
+		}
+
 		double **antenna1 = new double*[2];
 		double **antenna2 = new double*[2];
 		for (int i = 0; i < 2; i++) {
@@ -160,14 +174,17 @@ int main() {
 
 		cx_mat R;
 		DeMapper DM = DeMapper();
-		Equalizer Eq = Equalizer();
+		//Equalizer Eq = Equalizer();
+
+		IFFT_Z IFFT_z = IFFT_Z(16);
+		ML_Z ML = ML_Z();
+
 		Demodulator Dmod = Demodulator();
 		arma::mat Y = mat(32, 1, fill::zeros);
 		arma::mat S = mat(32, 1, fill::zeros);
 		Decoder dec = Decoder();
-
-		Channel ch = Channel("Low", "EPA 5Hz", 5, dec.getSigma());
-		//cout<<dec.getSigma()<<endl;
+		Channel ch = Channel("High", "EPA 5Hz", 5, dec.getSigma());
+		cout << dec.getSigma() << endl;
 		double lc = 2.5;
 		int iterations = 6;
 		double *LLR = new double[40];	//=  double[40];
@@ -182,9 +199,6 @@ int main() {
 		double *leuk1 = new double[40];
 		double *leuk2 = new double[40];
 		double *luk = new double[40];
-		for (int var = 0; var < 40; ++var) {
-			luk[var] = 0.0;
-		}
 		double *R1 = new double[40];
 		double *R2 = new double[40];
 		int *y1 = new int[40];
@@ -194,6 +208,41 @@ int main() {
 		decode = new int[40];
 		int* decoded_data;
 		decoded_data = new int[320];
+		cx_mat H_her = zeros<cx_mat>(24, 24);
+		cx_mat C = zeros<cx_mat>(24, 24);
+		cx_mat C_her = zeros<cx_mat>(24, 24);
+		cx_mat Pd = zeros<cx_mat>(24, 24);
+		for (int i = 0; i < 24; i++) {
+
+			for (int j = 0; j < 24; j++) {
+				if (i == j) {
+					Pd(i, i) = cx_double(42.0, 0.0);
+					if (i == 0 || i == 1 || i == 10 || i == 11 || i == 12
+							|| i == 13 || i == 22 || i == 23) {
+						Pd(i, j) = cx_double(0.0, 0.0);
+					}
+				}
+				/*else{
+				 Pd_array[i][j] = Complex.valueOf(0.0, 0.0);
+
+				 }*/
+			}
+		}
+
+		cx_mat sigma_mat = zeros<cx_mat>(24, 24);
+		for (int i = 0; i < 24; i++) {
+
+			for (int j = 0; j < 24; j++) {
+				if (i == j) {
+					sigma_mat(i, i) = cx_double(dec.getSigma() * dec.getSigma(),
+							0.0);
+
+				}/*else{
+				 sigma_mat_array[i][j] = Complex.valueOf(0.0, 0.0);
+
+				 }*/
+			}
+		}
 		for (int i_size = 0; i_size < datafilesize; i_size = i_size + 320) {
 
 			starttime = clock();
@@ -209,7 +258,6 @@ int main() {
 			endtime = clock();
 			encode_time_full = (endtime - starttime) + encode_time_full;
 			////////////////////////////////////////////////////////////////////////////////////print encoded data, time and length
-//cout<<"This is encoded data"<<endl<<encodeddata<<endl;
 
 			///////////////////////////////////////////////////////////////////////////////////modulating the data
 
@@ -292,6 +340,7 @@ int main() {
 					antenna2_ch[0][j] = antenna2[0][12 * i + j];
 					antenna2_ch[1][j] = antenna2[1][12 * i + j];
 					// count1++;
+					//cout<<antenna1_ch[0][j]<<" + "<<antenna1_ch[1][j]<<"i          ---------          "<<antenna2_ch[0][j]<<" + "<<antenna2_ch[1][j]<<endl;
 				}
 
 				//	Rx = ch.LTEMIMOCHANNEL(antenna1_ch, 12, antenna2_ch);
@@ -299,7 +348,7 @@ int main() {
 				H = ch.LTEMIMOCHANNEL_mat();
 
 				noise = randn<cx_mat>(2 * 12, 1);
-
+//noise.print();
 				Tx_2 = fft.getfftw(12, antenna2_ch, 12);
 
 				Tx_1 = fft.getfftw(12, antenna1_ch, 12);
@@ -315,10 +364,17 @@ int main() {
 				for (int var = 0; var < 12; ++var) {
 					Tx.at(var + 12, 0) = cx_double(Tx_2[0][var], Tx_2[1][var]);
 				}
-
+//Tx.print();
+				//	H.print("This is h");
 				///////////////////////////////////////////////////////////////////////////////////////////
-				R = H * Tx+ dec.getSigma() * noise;
-
+				R = (H * Tx);
+				//	R.print("This is R before");
+				noise = dec.getSigma() * noise;
+				R = R + noise;
+				/*noise.print("this is noise");*/
+//noise=(dec.getSigma() * noise);
+//noise.print("thisis noise*sigma");
+				//	R.print("This is R");
 				for (int var = 0; var < 24; ++var) {
 					Rx[0][var] = R.at(var, 0).real();
 					Rx[1][var] = R.at(var, 0).imag();
@@ -329,15 +385,47 @@ int main() {
 				channel_time_full = channel_time_full + (endtime - starttime);
 
 				//////////////////////////////////////////////////////////////////////////////////////////
-
+//arma::inv(H);
 				starttime = clock();
-				y_ = DM.get_demapped_rx(Rx);
+				//H.print("this is H");
+				//(H*arma::inv(H)).print("H*Hinv");
+				//////////////////////////////////////////////////////////////////
+
+				//H_her=H;
+				for (int j = 0; j < 24; j++) {
+					for (int k = 0; k < 24; k++) {
+						H_her(j, k) = cx_double(H.at(j, k).real(),
+								(-1) * H.at(j, k).imag()); //(i, j)=Complex ;// H.get(i, j).getImaginary();
+					}
+				}
+
+				H_her = H_her.t();
+				//System.out.println(Pd.times(H).times(H_her).plus(sigma_mat));
+				C = inv(  (  (  (Pd * H) * H_her  ) + sigma_mat  )  );
+
+				C = C * Pd * H;
+				//System.out.println(C_her);
+				for (int j = 0; j < 24; j++) {
+					for (int k = 0; k < 24; k++) {
+						C_her(j, k) = cx_double(C.at(j, k).real(),
+								(-1) * C.at(j, k).imag()); //(i, j)=Complex ;// H.get(i, j).getImaginary();
+					}
+				}
+
+				C_her = C_her.t();
+
+				/////////////////////////////////////////////////////////////////
+				y_ = DM.get_demapped_rx_ZF(Rx, C_her);
 				endtime = clock();
 				demapper_time_full = demapper_time_full + (endtime - starttime);
-
+				//	cout<<"******************"<<endl;
 				starttime = clock();
 
-				Eq.genH(ch.getHout());
+				/*	cout << "this is Y" << endl;
+				 for (int var = 0; var < 32; ++var) {
+				 cout << y_[var] << endl;
+				 }*/
+				//Eq.genH(ch.getHout());
 				endtime = clock();
 				getH_time_full = getH_time_full + (endtime - starttime);
 				starttime = clock();
@@ -345,7 +433,19 @@ int main() {
 					Y.at(var, 0) = y_[var];
 				}
 
-				y_ = Eq.GetLSD_Y(Y);
+				y_out = IFFT_z.getifftw(8, Y, 16);
+				//	cout << "this is Ydash" << endl;
+				//	starttime = clock();
+				/* for (int var = 0; var < 16; ++var) {
+				 cout << y_out[0][var] <<" + "<<y_out[1][var] <<"i"<< endl;
+				 }*/
+				y_ = ML.Decision(y_out);
+				/*cout << "this is Y" << endl;
+
+				 for (int var = 0; var < 32; ++var) {
+				 cout << y_[var] << endl;
+				 }*/
+				//y_ = Eq.GetLSD_Y(Y);
 				endtime = clock();
 				equalizer_time_full = equalizer_time_full
 						+ (endtime - starttime);
@@ -357,39 +457,37 @@ int main() {
 				demodulator_time_full = demodulator_time_full
 						+ (endtime - starttime);
 			}
-			//cout<<"This is received data"<<endl<<received_data<<endl;
-			//cout<<error_calc_str(encodeddata, received_data, encodeddata.length())<<endl;
+
 			int count = 0;
+
 			starttime = clock();
+
 			for (int i1 = 0; i1 < encodeddata.length(); i1 = i1 + 132) {
 
 				dec.decoder_log_map_it(received_data.substr(i1, i1 + 132), 1,
 						data_block_size, luk);
-				//LLR1 = dec.getLLR1();
-				/*cout << endl << "This is LLR1" << endl;
-				for (int var = 0; var < 40; ++var) {
-					cout << LLR1[var] << endl;
-				}*/
-				leuk1 = dec.get_leuk();
-			/*	cout << endl << "This is LEUK" << endl;
-				for (int var = 0; var < 40; ++var) {
-					cout << leuk1[var] << endl;
-				}*/
 
+				LLR1 = dec.getLLR1();
+				/*	cout<<"This is LLR1"<<endl;
+				 for (int var = 0; var < 40; ++var) {
+				 cout<<LLR1[var]<<endl;
+				 }*/
+
+				leuk1 = dec.get_leuk();
 				y1 = dec.getY();
 				dec.decoder_log_map_it(received_data.substr(i1, i1 + 132), 2,
 						data_block_size, leuk1);
-			//	LLR2 = dec.getLLR1();
-				/*cout << endl << "This is LLR2" << endl;
-				for (int var = 0; var < 40; ++var) {
-					cout << LLR2[var] << endl;
-				}*/
+				/*LLR2=dec.getLLR1();
+				 cout<<"This is LLR2"<<endl;
+				 for (int var = 0; var < 40; ++var) {
+				 cout<<LLR2[var]<<endl;
+				 }*/
 				I2 = dec.get_interleave_table();
 				leuk2 = dec.get_leuk();
 				R2 = dec.getR();
 				y2 = dec.getY();
 				LEUK = leuk2; //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-				lc=dec.getLC();
+				lc = dec.getLC();
 				for (int n = 3; n <= iterations; ++n) { //   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 					if ((n % 2) == 1) {
@@ -410,6 +508,7 @@ int main() {
 				} //                      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 				for (int i = 0; i < 40; i++) {
+					//	cout<<"*  "<<LLR[i]<<endl;
 					if (LLR[i] > 0) {
 						decode[i] = 1;
 					} else {
@@ -427,7 +526,7 @@ int main() {
 			endtime = clock();
 
 			decoder_time_full = decoder_time_full + (endtime - starttime);
-
+//cout<<rawdata<<endl<<decoded_data<<;
 			error = error + error_calc(rawdata, decoded_data, rawdata.length());
 
 		}
@@ -729,6 +828,7 @@ int error_calc(string rawdata_in, int* decoded_data, int count) {
 
 	if (rawdata_in.length() == count) {
 		for (int i = 0; i < rawdata_in.length(); ++i) {
+			//	cout<<decoded_data[i]<<" -- "<<((int) rawdata_in[i] - 48)<<endl;
 			if (((int) rawdata_in[i] - 48) != decoded_data[i]) {
 				error++;
 			}
@@ -741,21 +841,3 @@ int error_calc(string rawdata_in, int* decoded_data, int count) {
 		return 677;
 	}
 }
-int error_calc_str(string rawdata_in, string decoded_data, int count) {
-	int error = 0;
-
-	if (rawdata_in.length() == count) {
-		for (int i = 0; i < rawdata_in.length(); ++i) {
-			if (((int) rawdata_in[i] - 48) != ((int) decoded_data[i] - 48)) {
-				error++;
-			}
-		}
-		return error;
-	} else {
-		// cout << " ERROR : Bit counts are different : " <<
-		// rawdata_in.length()
-		// << " " << count << endl;
-		return 677;
-	}
-}
-

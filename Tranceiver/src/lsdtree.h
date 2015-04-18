@@ -359,7 +359,6 @@ void LSDTree::generateFirstlevel(double y) {
 	for (int i = level_values_next.size() - 1; i >= 0; i--) {
 		if (i >= (count - K)) {
 
-
 			index_val = level_values_next.at(i);
 			index = (int) index_val[1];
 			temp2 = index_val[0];
@@ -799,5 +798,80 @@ bool LSDTree::testSphere(int i, double r, double im) {
 
 	return true;
 
+}
+class CreateTree {
+private:
+	LSDTree tree;
+	mat H;
+	mat Q;
+	mat R;
+	mat Rs;
+	Node minNode;
+	double y[32];
+
+public:
+	CreateTree() {
+
+
+		tree = LSDTree(1000000, 32);
+		H = mat(32, 32, fill::zeros);
+		Q = mat(32, 32, fill::zeros);
+		R = mat(32, 32, fill::zeros);
+		Rs = mat(32, 1, fill::zeros);
+
+		minNode = Node();
+
+	//	double y[32];
+	}
+	~CreateTree() {
+
+
+
+		//	double y[32];
+		}
+	double* runtree(mat Y,mat Hin);
+
+};
+
+double* CreateTree::runtree(mat Y,mat Hin) {
+H=Hin;
+	arma::qr(Q, R, H);
+
+	Y = Q.t() * Y;
+	//cout<<"***********"<<endl;
+	tree.setRMatrix(R);
+
+	tree.generateFirstlevel(Y.at(31, 0));
+
+	//System.out.println(Y.get(31, 0));
+	//tree.printTree();
+	//tree.printcurrentlevel();
+	//System.out.println("***************");
+
+	for (int i = 0; i < 31; i++) {
+		//	System.out.println("************************** After level : "+(i+1));
+		//System.out.println("Y index: "+i+1);
+		tree.generateNextlevel(Y.at(31 - (i + 1), 0), i + 1);
+
+		//tree.printTree();
+		//tree.printcurrentlevel();
+		//	System.out.println("*************************************");
+	}
+	//System.out.println("*************************************");
+
+	minNode = tree.getMinnode();
+	//cout << "***********************" <<minNode.getvalue()<< "  "<<minNode.getNode_S()<<endl;
+	//System.out.println(minNode.getNode_S()+" : "+minNode.getvalue());
+	for (int i = 0; i < 32; i++) {
+		//	System.out.println(i+" "+minNode.getvalue());
+		y[i] = minNode.getNode_S();
+
+		minNode = (minNode.getparent());
+	}
+
+	//delete tree;
+	//	cout << "***********************" << endl;
+
+	return y;
 }
 

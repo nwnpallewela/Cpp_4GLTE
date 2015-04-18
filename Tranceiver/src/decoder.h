@@ -16,12 +16,12 @@ class Decoder {
 
 private:
 	int data_block_size;
-	int le ;//= 3 * data_block_size + 12;
+	int le; //= 3 * data_block_size + 12;
 	int *y1;
 
-	int lim;// = 3 * data_block_size;
+	int lim; // = 3 * data_block_size;
 	int **intlv_table;
-	int k ;//= data_block_size + 4;
+	int k; //= data_block_size + 4;
 	double **gamma;
 
 	double **a;
@@ -30,13 +30,12 @@ private:
 	double *llr; //[] = new double[data_block_size];
 	double *R; //[]=new double[40];
 
-	double lc;// = 2.5;
+	double lc; // = 2.5;
 
-	double Eb_No ;//= 0;
+	double Eb_No; //= 0;
 	//double lc ;//1= (20.0 / 33.0) * Math.pow(10, 0.1 * Eb_No);
-	double sigma;// = Math.sqrt(3.5 / Math.pow(10, 0.1 * Eb_No));
-
-
+	double sigma;	// = Math.sqrt(3.5 / Math.pow(10, 0.1 * Eb_No));
+	int* decoded;
 
 public:
 	int* decoder_log_map(string data, int decoder_num, int data_block_size);
@@ -46,7 +45,7 @@ public:
 			double g, double h);
 	double max_e4(double a, double b, double c, double d);
 	double max_e(double a, double b);
-
+double getLC();
 	double* get_leuk();
 
 	double* getLLR1();
@@ -58,20 +57,26 @@ public:
 
 	Decoder() {
 		lc = 2.5;
-
-		 Eb_No = 0;
-		 lc = (20.0 / 33.0) * pow(10, 0.1 * Eb_No);
-		 sigma = sqrt(3.5 / pow(10, 0.1 * Eb_No));
-
-
-		data_block_size=40;
-		 k = data_block_size + 4;
+		decoded = new int[40];
+		Eb_No = 10;
+		lc = (20.0 / 33.0) * pow(10, 0.1 * Eb_No);
+		sigma = sqrt(3.5 / pow(10, 0.1 * Eb_No));
+//cout<<lc<<"   "<<sigma<<endl;
+		data_block_size = 40;
+		k = data_block_size + 4;
 		lim = 3 * data_block_size;
 		y1 = new int[((2 * data_block_size) + 6)];
 		le = 3 * data_block_size + 12;
 		leuk = new double[40];
 		llr = new double[40];
 		R = new double[40];
+
+
+						for (int var = 0; var < 40; ++var) {
+							leuk[var]=0.0;
+							llr[var]=0.0;
+							R[var]=0.0;
+						}
 
 		for (int i = 0; i < ((2 * data_block_size) + 6); ++i) {
 			y1[i] = 0;
@@ -105,7 +110,7 @@ public:
 
 };
 
-double Decoder::getSigma(){
+double Decoder::getSigma() {
 	return sigma;
 }
 
@@ -132,8 +137,8 @@ int** Decoder::get_interleave_table() {
 void Decoder::decoder_log_map_it(string data, int decoder_num,
 		int data_block_size, double *luk) {
 
-	double t[40];// =  double[40];
-	int le = 3 * data_block_size + 12;
+	double t[40];	// =  double[40];
+	//int le = 3 * data_block_size + 12;
 	//double lc = 2.5;
 
 	int s = 1;
@@ -178,8 +183,7 @@ void Decoder::decoder_log_map_it(string data, int decoder_num,
 				// /////////////////////////////////////////////////////
 
 				// ///////////////////////////////////////////////////
-				intlv = (((3 * (l )) + (10 * (l) * (l)))
-						% data_block_size);
+				intlv = (((3 * (l)) + (10 * (l) * (l))) % data_block_size);
 
 				if (l < 40) {
 					intlv_table[l][0] = l;
@@ -375,10 +379,10 @@ void Decoder::decoder_log_map_it(string data, int decoder_num,
 			a[9][i - 1] = gamma[3][i];
 
 			/*r0 = a[0][i - 1] + gamma[0][i];
-			// //////////////////////////////////////Check
-			// THISSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS
-			r1 = a[1][i - 1] + gamma[3][i];
-			a[16][i] = r1 - r0;*/
+			 // //////////////////////////////////////Check
+			 // THISSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS
+			 r1 = a[1][i - 1] + gamma[3][i];
+			 a[16][i] = r1 - r0;*/
 
 		} else if (i == k - 2) {
 			a[8][i - 1] = a[8][i] + gamma[0][i];
@@ -387,12 +391,12 @@ void Decoder::decoder_log_map_it(string data, int decoder_num,
 			a[11][i - 1] = a[9][i] + gamma[1][i];
 
 			/*r0 = max_e(a[0][i - 1] + gamma[0][i] + a[8][i],
-					a[3][i - 1] + gamma[1][i] + a[9][i]);
-			// //////////////////////////////////////////////Check
-			// THISSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS
-			r1 = max_e(a[1][i - 1] + gamma[3][i] + a[8][i],
-					a[2][i - 1] + gamma[2][i] + a[9][i]);
-			a[16][i] = r1 - r0;*/
+			 a[3][i - 1] + gamma[1][i] + a[9][i]);
+			 // //////////////////////////////////////////////Check
+			 // THISSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS
+			 r1 = max_e(a[1][i - 1] + gamma[3][i] + a[8][i],
+			 a[2][i - 1] + gamma[2][i] + a[9][i]);
+			 a[16][i] = r1 - r0;*/
 
 		} else if (i == k - 3) {
 
@@ -406,17 +410,17 @@ void Decoder::decoder_log_map_it(string data, int decoder_num,
 			a[15][i - 1] = a[11][i] + gamma[0][i];
 			// //////////////////////////////////////
 
-		/*	r0 = max_e4(a[0][i - 1] + gamma[0][i] + a[8][i],
-					a[3][i - 1] + gamma[1][i] + a[9][i],
-					a[4][i - 1] + gamma[1][i] + a[10][i],
-					a[7][i - 1] + gamma[0][i] + a[11][i]);
-			// /////////////////////////////////////////////////////////////////////////
-			// Check THISSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS
-			r1 = max_e4(a[1][i - 1] + gamma[3][i] + a[8][i],
-					a[2][i - 1] + gamma[2][i] + a[9][i],
-					a[5][i - 1] + gamma[2][i] + a[10][i],
-					a[6][i - 1] + gamma[3][i] + a[11][i]);
-			a[16][i] = r1 - r0;*/
+			/*	r0 = max_e4(a[0][i - 1] + gamma[0][i] + a[8][i],
+			 a[3][i - 1] + gamma[1][i] + a[9][i],
+			 a[4][i - 1] + gamma[1][i] + a[10][i],
+			 a[7][i - 1] + gamma[0][i] + a[11][i]);
+			 // /////////////////////////////////////////////////////////////////////////
+			 // Check THISSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS
+			 r1 = max_e4(a[1][i - 1] + gamma[3][i] + a[8][i],
+			 a[2][i - 1] + gamma[2][i] + a[9][i],
+			 a[5][i - 1] + gamma[2][i] + a[10][i],
+			 a[6][i - 1] + gamma[3][i] + a[11][i]);
+			 a[16][i] = r1 - r0;*/
 
 		} else if (((i < k - 3) && (i > 3))) {
 
@@ -452,10 +456,9 @@ void Decoder::decoder_log_map_it(string data, int decoder_num,
 					a[4][i - 1] + gamma[2][i] + a[14][i],
 					a[7][i - 1] + gamma[3][i] + a[15][i]);
 
-			R[i-1]=r1-r0;
-						a[16][i] = r1 - r0 + luk[i - 1]; // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-						leuk[i - 1] = a[16][i] - luk[i - 1] - 2 * lc * y[2 * i - 2];// %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+			R[i - 1] = r1 - r0;
+			a[16][i] = r1 - r0 + luk[i - 1]; // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+			leuk[i - 1] = a[16][i] - luk[i - 1] - 2 * lc * y[2 * i - 2]; // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 		} else if (i == 3) {
 
@@ -477,10 +480,9 @@ void Decoder::decoder_log_map_it(string data, int decoder_num,
 					a[0][i - 1] + gamma[3][i] + a[12][i],
 					a[4][i - 1] + gamma[2][i] + a[14][i]);
 
-			R[i-1]=r1-r0;
-						a[16][i] = r1 - r0 + luk[i - 1]; // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-						leuk[i - 1] = a[16][i] - luk[i - 1] - 2 * lc * y[2 * i - 2];// %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+			R[i - 1] = r1 - r0;
+			a[16][i] = r1 - r0 + luk[i - 1]; // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+			leuk[i - 1] = a[16][i] - luk[i - 1] - 2 * lc * y[2 * i - 2]; // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 		}
 
@@ -497,11 +499,9 @@ void Decoder::decoder_log_map_it(string data, int decoder_num,
 			r1 = max_e(a[0][i - 1] + gamma[3][i] + a[12][i],
 					a[4][i - 1] + gamma[2][i] + a[14][i]);
 
-
-			R[i-1]=r1-r0;
-						a[16][i] = r1 - r0 + luk[i - 1]; // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-						leuk[i - 1] = a[16][i] - luk[i - 1] - 2 * lc * y[2 * i - 2];// %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+			R[i - 1] = r1 - r0;
+			a[16][i] = r1 - r0 + luk[i - 1]; // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+			leuk[i - 1] = a[16][i] - luk[i - 1] - 2 * lc * y[2 * i - 2]; // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 		}
 
@@ -513,9 +513,10 @@ void Decoder::decoder_log_map_it(string data, int decoder_num,
 			// THISSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS
 			r1 = a[0][i - 1] + gamma[3][i] + a[12][i];
 
-			R[i-1]=r1-r0;
-						a[16][i] = r1 - r0 + luk[i - 1]; // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-						leuk[i - 1] = a[16][i] - luk[i - 1] - 2 * lc * y[2 * i - 2];// %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+			R[i - 1] = r1 - r0;
+			a[16][i] = r1 - r0 + luk[i - 1]; // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+			leuk[i - 1] = a[16][i] - luk[i - 1] - 2 * lc * y[2 * i - 2]; // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 		}
 
@@ -523,12 +524,11 @@ void Decoder::decoder_log_map_it(string data, int decoder_num,
 	}
 	// /////////////////////////////////////////////////////////////
 
-	int* decoded;
-	decoded = new int[data_block_size]; // = zeros(data_block_size,
-										// 1);
+// = zeros(data_block_size,
+	// 1);
 
 	//double llr[data_block_size]; // = zeros(data_block_size,
-								 // 1);
+	// 1);
 	if (decoder_num == 1) {
 		for (int h = 0; h < (k - 4); ++h) { // h=1:k-4
 			llr[h] = a[16][h + 1];
@@ -536,11 +536,13 @@ void Decoder::decoder_log_map_it(string data, int decoder_num,
 		}
 	} else {
 		for (int h = 0; h < (k - 4); ++h) {
-						t[intlv_table[h][1]] = leuk[h];
-						llr[intlv_table[h][1]] = a[16][h + 1];
+			t[intlv_table[h][1]] = leuk[h];
+			llr[intlv_table[h][1]] = a[16][h + 1];
 
-					}
-					leuk = t;
+		}
+		for (int var = 0;  var < 40; ++ var) {
+			leuk[var]=t[var];
+		}
 	}
 	// decode = decoded;
 
@@ -1095,4 +1097,7 @@ double Decoder::max_e(double a, double b) {
 		c = b - a;
 	}
 	return max + log10(1 + exp(-c));
+}
+double Decoder::getLC() {
+	return lc;
 }

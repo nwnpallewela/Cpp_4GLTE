@@ -21,9 +21,11 @@ private:
 	mat Q;
 	mat R;
 	mat Rs;
+	Node minNode;
 	LSDTree Tree;
 
-	double y[32];
+
+	double *y;
 
 public:
 	void genH(cx_mat H1);
@@ -37,7 +39,8 @@ public:
 		Q = mat(32, 32, fill::zeros);
 		R = mat(32, 32, fill::zeros);
 		Rs = mat(32, 1, fill::zeros);
-
+		minNode=Node();
+		y=new double[32];
 	}
 
 };
@@ -60,16 +63,17 @@ void Equalizer::genH(cx_mat H1) {
 double* Equalizer::GetLSD_Y(mat Y) {
 
 	//QRDecomposition QRD = new QRDecomposition(H);
+	/*
 
 	arma::qr(Q, R, H);
 //	(H - Q * R).print("This is H-QR");
-	/*Q=QRD.getQ();
-	 R=QRD.getR();*/
+	Q=QRD.getQ();
+	 R=QRD.getR();
 
-	/*System.out.println("Y row: ");
+	System.out.println("Y row: ");
 	 System.out.println(Y);
 	 System.out.println();
-	 */
+
 
 	//Y=Q.transpose().times(Y);
 	Y = Q.t() * Y;
@@ -77,14 +81,18 @@ double* Equalizer::GetLSD_Y(mat Y) {
 	//	Y=Rs;
 	//(Y - Rs).print("This is Y - RS");
 	//Y.print("this is y dash: ");
-	/*System.out.println("Y dash: ");
+	System.out.println("Y dash: ");
 	 System.out.print(Y.transpose());
-	 System.out.println();*/
+	 System.out.println();
 //R.print();
-	LSDTree tree = LSDTree(1000000, 32);
-	tree.setRMatrix(R);
 
-	tree.generateFirstlevel(Y.at(31, 0));
+	LSDTree* tr = new LSDTree(1000000, 32);
+//	LSDTree tree = LSDTree(1000000, 32);
+	//std::auto_ptr<LSDTree> tree(new LSDTree);
+
+	tr->setRMatrix(R);
+
+	tr->generateFirstlevel(Y.at(31, 0));
 
 	//System.out.println(Y.get(31, 0));
 	//tree.printTree();
@@ -94,7 +102,7 @@ double* Equalizer::GetLSD_Y(mat Y) {
 	for (int i = 0; i < 31; i++) {
 		//	System.out.println("************************** After level : "+(i+1));
 		//System.out.println("Y index: "+i+1);
-		tree.generateNextlevel(Y.at(31 - (i + 1), 0), i + 1);
+		tr->generateNextlevel(Y.at(31 - (i + 1), 0), i + 1);
 
 		//tree.printTree();
 		//tree.printcurrentlevel();
@@ -102,7 +110,7 @@ double* Equalizer::GetLSD_Y(mat Y) {
 	}
 	//System.out.println("*************************************");
 
-	Node minNode = tree.getMinnode();
+	 minNode = tr->getMinnode();
 	//cout << "***********************" <<minNode.getvalue()<< "  "<<minNode.getNode_S()<<endl;
 	//System.out.println(minNode.getNode_S()+" : "+minNode.getvalue());
 	for (int i = 0; i < 32; i++) {
@@ -112,8 +120,16 @@ double* Equalizer::GetLSD_Y(mat Y) {
 		minNode = (minNode.getparent());
 	}
 
+	delete tr;
 	//	cout << "***********************" << endl;
+*/
 
+	CreateTree *ct;
+
+	ct= new CreateTree();
+//	cout << "***********************" << endl;
+	y=ct->runtree(Y,H);
+	delete ct;
 	return y;
 }
 
@@ -150,6 +166,6 @@ mat Equalizer::getQtRS(mat S) {
 	//Q.print("This is Q : ");
 	//R.print(""This is R : ");
 	Rs = R * S;
-	return (Q.t().i())*Rs;
+	return (Q.t().i()) * Rs;
 
 }
